@@ -178,5 +178,5 @@ cmd package compile -m speed-profile -f "$PKG_NAME"
 rm -rf "${MODPATH:?}/bin" "$MODPATH/$PKG_NAME.apk"
 
 ui_print "* Done"
-ui_print "  by j-hc (upstream, github.com/j-hc) / RJ (fork maintainer)"
+ui_print "  by j-hc(maintained by rjaakash)"
 ui_print " "
