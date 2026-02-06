@@ -1,0 +1,39 @@
+name: Repository Maintenance Cleanup
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cleanup old releases (keep last 1)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          export GH_TOKEN=$GH_TOKEN
+
+          gh release list --limit 100 --json tagName,createdAt \
+            -q '.[] | "\(.tagName)|\(.createdAt)"' \
+            | sort -t'|' -k2 -r > releases.txt
+
+          KEEP=$(head -n 1 releases.txt | cut -d'|' -f1)
+
+          echo "Keeping tag:"
+          echo "$KEEP"
+
+          cat releases.txt | while IFS='|' read -r TAG DATE; do
+            if [ "$TAG" != "$KEEP" ]; then
+              gh release delete "$TAG" --yes || true
+              git push origin ":refs/tags/$TAG" || true
+            fi
+          done
