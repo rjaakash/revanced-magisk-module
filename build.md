@@ -1,5 +1,5 @@
 Music: 8.10.52  
-YouTube: 20.14.43  
+YouTube: 20.40.45  
 
 Use [zygisk-detach](https://github.com/j-hc/zygisk-detach) to detach root Morphe YouTube and YT Music from Play Store  
 
