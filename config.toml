@@ -7,11 +7,11 @@ rv-brand = "Morphe"
 
 [YouTube]
 build-mode = "module"
-version = "0"
+version = "20.14.43"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
 
 [Music]
 build-mode = "module"
-version = "0"
+version = "8.10.52"
 archive-dlurl = "https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
 arch = "arm64-v8a"
