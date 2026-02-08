@@ -1,0 +1,81 @@
+name: Version Watcher
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 5 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Resolve versions
+        run: |
+          set -e
+
+          PATCHES_URL="https://raw.githubusercontent.com/MorpheApp/morphe-patches/main/patches-list.json"
+
+          YT_ARCHIVE="https://archive.org/download/jhc-apks/apks/com.google.android.youtube"
+          YTM_ARCHIVE="https://archive.org/download/jhc-apks/apks/com.google.android.apps.youtube.music"
+
+          echo "[+] Fetching Morphe patches"
+
+          curl -s "$PATCHES_URL" > patches.json
+
+          YT_PATCHES=$(jq -r '.patches[].compatiblePackages["com.google.android.youtube"]?[]' patches.json | sort -V | uniq)
+          YTM_PATCHES=$(jq -r '.patches[].compatiblePackages["com.google.android.apps.youtube.music"]?[]' patches.json | sort -V | uniq)
+
+          echo "[+] Fetching archive listings"
+
+          YT_FILES=$(curl -s "$YT_ARCHIVE" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          YTM_FILES=$(curl -s "$YTM_ARCHIVE" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
+          YT_FINAL=$(comm -12 <(echo "$YT_PATCHES") <(echo "$YT_FILES") | sort -V | tail -n 1)
+          YTM_FINAL=$(comm -12 <(echo "$YTM_PATCHES") <(echo "$YTM_FILES") | sort -V | tail -n 1)
+
+          echo "YT_FINAL=$YT_FINAL" >> $GITHUB_ENV
+          echo "YTM_FINAL=$YTM_FINAL" >> $GITHUB_ENV
+
+      - name: Update config.toml
+        run: |
+          set -e
+
+          if [ -z "$YT_FINAL" ] || [ -z "$YTM_FINAL" ]; then
+            echo "Nothing found on archive"
+            exit 0
+          fi
+
+          CURRENT_YT=$(grep -A5 '\[YouTube\]' config.toml | grep version | cut -d'"' -f2)
+          CURRENT_YTM=$(grep -A5 '\[Music\]' config.toml | grep version | cut -d'"' -f2)
+
+          echo "Current YT  : $CURRENT_YT"
+          echo "Latest  YT  : $YT_FINAL"
+          echo "Current YTM : $CURRENT_YTM"
+          echo "Latest  YTM : $YTM_FINAL"
+
+          if [ "$CURRENT_YT" = "$YT_FINAL" ] && [ "$CURRENT_YTM" = "$YTM_FINAL" ]; then
+            echo "Already up to date"
+            exit 0
+          fi
+
+          sed -i "/\[YouTube\]/,/version =/ s/version = \".*\"/version = \"$YT_FINAL\"/" config.toml
+          sed -i "/\[Music\]/,/version =/ s/version = \".*\"/version = \"$YTM_FINAL\"/" config.toml
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git add config.toml
+          git commit -m "chore: update youtube to $YT_FINAL and music to $YTM_FINAL"
+          git push
